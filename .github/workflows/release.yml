@@ -34,12 +34,15 @@ jobs:
         docker run -d --rm -p 8080:8000 --name temp_container afradaidid/fastapi-weather-api:${{ env.VERSION }}
         sleep 10
 
-    - name: Check API version matches release version
+    - name: Check API version matches release version (normalized)
       run: |
+        RELEASE_VERSION=${{ env.VERSION }}
+        NORMALIZED_RELEASE_VERSION=${RELEASE_VERSION#v}
         API_VERSION=$(curl -s http://localhost:8080/api/hello | jq -r '.version')
         echo "API version: $API_VERSION"
-        if [ "$API_VERSION" != "${{ env.VERSION }}" ]; then
-          echo "Version mismatch! API version ($API_VERSION) != Release version ($VERSION)"
+        echo "Release version (normalized): $NORMALIZED_RELEASE_VERSION"
+        if [ "$API_VERSION" != "$NORMALIZED_RELEASE_VERSION" ]; then
+          echo "Version mismatch! API version ($API_VERSION) != Release version ($NORMALIZED_RELEASE_VERSION)"
           docker stop temp_container
           exit 1
         fi
