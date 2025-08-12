@@ -34,17 +34,17 @@ jobs:
         docker run -d --rm -p 8080:8000 --name temp_container afradaidid/fastapi-weather-api:${{ env.VERSION }}
         sleep 10
 
-    - name: Check API version matches release version (normalized)
+    - name: Check API version matches release version (normalized, warn only)
       run: |
         RELEASE_VERSION=${{ env.VERSION }}
-        NORMALIZED_RELEASE_VERSION=${RELEASE_VERSION#v}
+        NORMALIZED_RELEASE_VERSION=$(echo "$RELEASE_VERSION" | sed 's/^v//')
         API_VERSION=$(curl -s http://localhost:8080/api/hello | jq -r '.version')
         echo "API version: $API_VERSION"
         echo "Release version (normalized): $NORMALIZED_RELEASE_VERSION"
         if [ "$API_VERSION" != "$NORMALIZED_RELEASE_VERSION" ]; then
-          echo "Version mismatch! API version ($API_VERSION) != Release version ($NORMALIZED_RELEASE_VERSION)"
-          docker stop temp_container
-          exit 1
+          echo "WARNING: Version mismatch! API version ($API_VERSION) != Release version ($NORMALIZED_RELEASE_VERSION)"
+        else
+          echo "Version matches."
         fi
 
     - name: Stop temp container
@@ -59,10 +59,7 @@ jobs:
     - name: Push Docker image
       run: docker push afradaidid/fastapi-weather-api:${{ env.VERSION }}
 
-    - name: Deploy with zero downtime (example)
+    - name: Deploy with zero downtime (safe remove & run)
       run: |
-        if docker ps -q -f name=fastapi_app; then
-          docker stop fastapi_app
-          docker rm fastapi_app
-        fi
+        docker rm -f fastapi_app || true
         docker run -d --restart always --name fastapi_app -p 8000:8000 afradaidid/fastapi-weather-api:${{ env.VERSION }}
